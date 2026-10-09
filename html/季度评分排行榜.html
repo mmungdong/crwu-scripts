@@ -101,7 +101,8 @@
   .rank { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; border-radius: 7px; font-weight: 700; font-size: 13px; }
   .rank.r1 { background: var(--gold); color: #fff; } .rank.r2 { background: var(--silver); color: #fff; }
   .rank.r3 { background: var(--bronze); color: #fff; } .rank.rn { background: #eef0f5; color: #5c6675; }
-  .name { font-weight: 600; } .sub { color: var(--muted); font-size: 12px; } .avg { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .name { font-weight: 600; white-space: nowrap; } .sub { color: var(--muted); font-size: 12px; } .avg { font-weight: 700; font-variant-numeric: tabular-nums; }
+  #dept-body td:nth-child(3) { white-space: nowrap; }
 
   .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
   .pill.up { background: var(--up-soft); color: var(--up); } .pill.down { background: var(--down-soft); color: var(--down); }
@@ -148,6 +149,12 @@
   .filter-item .tag { font-size: 11px; padding: 1px 6px; border-radius: 999px; background: #f3e3b0; color: #6b5b1f; }
   .filter-item .cnt { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
   .filter-empty { color: var(--muted); font-size: 13px; padding: 12px 4px; grid-column: 1 / -1; }
+  .filter-section-title { margin: 16px 0 8px; font-size: 14px; }
+  .risk-list { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .reviewer-list { max-height: 200px; }
+  .filter-warning { color: #6b5b1f; }
+  #filter-mask .modal-body { padding-top: 12px; }
+  #filter-list { max-height: 26vh; }
 
   .foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 24px; }
 
@@ -178,7 +185,7 @@
     <button class="tool-btn primary" onclick="document.getElementById('fileInput').click()" data-page-node-id="FqEpKlWgx7IA4Y87YAdShm">📥 导入 Excel</button>
     <button class="tool-btn" onclick="exportExcel()" data-page-node-id="2BjI9gEhY2iWqZBmQD2xcc">📤 导出 Excel</button>
     <button class="tool-btn" onclick="clearData()" data-page-node-id="q4vIsXReuNAzXdpVN92aIo">🗑 清空数据</button>
-    <button class="tool-btn" id="filter-btn" onclick="openFilter()" data-page-node-id="DdAWYTS2S1JoRZ4KjRax6k">🚫 部门过滤<span class="badge" id="filter-count" data-page-node-id="fKcaxkImkpWmp8g6O81suF"></span></button>
+    <button class="tool-btn" id="filter-btn" onclick="openFilter()" data-page-node-id="DdAWYTS2S1JoRZ4KjRax6k">🚫 过滤条件<span class="badge" id="filter-count" data-page-node-id="fKcaxkImkpWmp8g6O81suF"></span></button>
     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.tsv,.txt" style="display:none" onchange="handleFile(this)" data-page-node-id="YIW1vPdAuaSDxgLE9HigHj">
     <span class="tool-hint" data-page-node-id="7Z64AeMWtWuwHtom4N3pKg">支持 .xlsx / .xls（自动识别「报告质量评分、部门、签字评估师1、签字评估师2、创建时间」等列），也可导入 CSV/TSV</span>
   </div>
@@ -222,6 +229,8 @@
       <li><b>签字评估师排名</b>：将「签字评估师1、签字评估师2」分别计入对应评估师后求平均（忽略 0 分；同一报告两列同名只计一次）。</li>
       <li><b>去重</b>：按「报告审核流水号」去重，同一流水号仅保留一条——分数不一致时去掉 0 分项，均非 0 且不一致时保留「创建时间」最新的一条。</li>
       <li><b data-page-node-id="EX4g20CvIHEoHARxY8arKK">部门过滤</b>：被过滤部门的全部记录不参与任何统计——部门排名、签字评估师排名（该部门名下报告不再计入相关评估师）、报告数与季度对比一并剔除。</li>
+      <li><b>组合过滤</b>：报告的业务风险命中所选类型，<b>且</b>三级复核人命中所选名单时，整条报告从所有统计中剔除。默认风险为 B、C，默认人员为 8 人；风险、人员勾选及临时添加仅在本次页面有效，重新打开恢复默认。</li>
+      <li><b>历史平均分</b>：按所选季度展示同年此前各季度及前三个自然年度的平均分。年度得分 = 该年已导入有效报告的评分总和 ÷ 报告数；沿用当前过滤条件，无有效报告显示 -。历史得分仅供参考，排名仍按本季得分计算。</li>
       <li><b>查看明细</b>：点击表格任意一行可查看该部门 / 评估师名下明细；点击行末「📈 趋势」可查看该部门 / 评估师<b data-page-node-id="i3keAeoDzAT34NPXzx4PDr">逐季度的排名变化</b>（折线图 + 明细表，含排名、平均分、报告数，可单独导出）。</li>
     </ol>
   </div>
@@ -229,7 +238,7 @@
   <div class="panel" id="dept-panel" data-page-node-id="HYvwW459pnQHrbj9ubxI5B">
     <div class="panel-head" data-page-node-id="cfO74yHmqUesVNqSJyKxOp"><h2 data-page-node-id="9W4GkCUcQ6TzKhPHxQoiTD">部门排名</h2><span class="hint" id="dept-hint" data-page-node-id="Qe7Pym533y3n0ucyDKHGfD"></span></div>
     <div class="table-scroll" data-page-node-id="oidhCJV5CP7ym7RCP1SE1e"><table data-page-node-id="xWGZRW85apginQDdM3Bi9j">
-      <thead data-page-node-id="FGYkRuMQYCrWAtFxsTh2aw"><tr data-page-node-id="M3skzONYHVzX4zHDHnxIuR">
+      <thead data-page-node-id="FGYkRuMQYCrWAtFxsTh2aw"><tr id="dept-head-row" data-page-node-id="M3skzONYHVzX4zHDHnxIuR">
         <th style="width:56px" data-page-node-id="Oz5D5FSLqnNGvTrlpz28mh">排名</th><th data-page-node-id="nu5Zumi5UmStdjAsSdga7s">部门</th><th data-page-node-id="GqNudEXdAsX8ciphyPO9Vj">部门负责人</th>
         <th class="num" data-page-node-id="e8xbVeusGFmDzfsb5TrYPu">报告数</th><th class="num" data-page-node-id="uy2UMipvKrlTDBKl7IcaGn">本季平均分</th>
         <th class="num" data-page-node-id="9tYoqVxZYsGFDg2m23sDVP">上季得分</th><th class="num" data-page-node-id="WgovDPQ8CfO0zIR11tNCpS">得分变化</th><th class="num" data-page-node-id="H6vLGNFgJ3m6sPYNDcJ6RQ">上季排名</th><th data-page-node-id="7WXXaDByNPN1h61GVFk2I9">排名变化</th>
@@ -242,7 +251,7 @@
   <div class="panel" id="app-panel" data-page-node-id="hRXtTq83UI6hxftCllJjDY">
     <div class="panel-head" data-page-node-id="DHAuGo4gBmggRCk8AnjRW8"><h2 data-page-node-id="MhZoNtAuFRtVBE9EAQeItf">签字评估师排名</h2><span class="hint" id="app-hint" data-page-node-id="YOf6IftNEH2R8AK44r4JBc"></span></div>
     <div class="table-scroll" data-page-node-id="OdSPgQQu68HPkx5yaYOBYR"><table data-page-node-id="wdMBAg3rlAyLexBxBficP1">
-      <thead data-page-node-id="Yk1K4i5ZZpXsoKyGMPuWYX"><tr data-page-node-id="ppLjcO7MeMptpFjc4q23gm">
+      <thead data-page-node-id="Yk1K4i5ZZpXsoKyGMPuWYX"><tr id="app-head-row" data-page-node-id="ppLjcO7MeMptpFjc4q23gm">
         <th style="width:56px" data-page-node-id="zbDVF4MkR4LigPuiPNHjIW">排名</th><th data-page-node-id="6L6vQG3RaE2zTQQKQ3Rt8H">签字评估师</th>
         <th class="num" data-page-node-id="gHG1KYB3j0wMAjzWhp8yXH">报告数</th><th class="num" data-page-node-id="Aia9UJ8wjs8Kc3o6o2Xo4W">本季平均分</th>
         <th class="num" data-page-node-id="ZPvSf3ju5DvWWcV10jJJYF">上季得分</th><th class="num" data-page-node-id="BN0232V1VnviD5K9AVoNxa">得分变化</th><th class="num" data-page-node-id="0ad7YaQgBG5j8m6hFpvB0t">上季排名</th><th data-page-node-id="floCY8GSHRr8bEHuXu2rn7">排名变化</th>
@@ -264,10 +273,25 @@
 
 <div class="modal-mask" id="filter-mask" data-page-node-id="rGpwdM70m4ytcPYcVH2jbW">
   <div class="modal narrow" data-page-node-id="FACqln5oGFfKD6WnPNxeDd">
-    <div class="modal-head" data-page-node-id="Ai0RKdzzALigbvIBEVVFCT"><h3 data-page-node-id="qBf1wnLGLlN2dEW0gX2zxg">部门过滤</h3><button class="close" onclick="closeFilter()" data-page-node-id="tkBDQgRi2e6y0CO50CYHN8">✕</button></div>
+    <div class="modal-head" data-page-node-id="Ai0RKdzzALigbvIBEVVFCT"><h3 data-page-node-id="qBf1wnLGLlN2dEW0gX2zxg">过滤条件</h3><button class="close" onclick="closeFilter()" data-page-node-id="tkBDQgRi2e6y0CO50CYHN8">✕</button></div>
     <div class="modal-body" data-page-node-id="Rtl5jxHfLiehbKPef6TuC3">
+      <p class="filter-tip">组合排除规则：业务风险命中<b>且</b>三级复核人命中，才排除整条报告。任一组未勾选时，组合过滤不生效。人员、风险的临时调整不会保存到浏览器，下次打开恢复默认。</p>
+      <h4 class="filter-section-title">业务风险（默认 B、C）</h4>
+      <div class="risk-list" id="risk-filter-list"></div>
+      <h4 class="filter-section-title">三级复核人（默认 8 人在前）</h4>
+      <div class="filter-tools">
+        <input type="text" id="reviewer-search" aria-label="搜索三级复核人" placeholder="搜索三级复核人…" oninput="renderCompoundFilterList()">
+        <button class="tool-btn" onclick="resetCompoundFilter()">↺ 恢复默认风险和人员</button>
+      </div>
+      <form class="filter-tools" onsubmit="addReviewer(); return false;">
+        <input type="text" id="reviewer-add" aria-label="追加三级复核人" placeholder="输入姓名，临时追加到名单末尾" required>
+        <button class="tool-btn" type="submit">＋ 添加并勾选</button>
+      </form>
+      <div class="filter-list reviewer-list" id="reviewer-filter-list"></div>
+      <p class="filter-tip filter-warning" id="filter-data-warning"></p>
+      <h4 class="filter-section-title">部门排除（独立生效）</h4>
       <p class="filter-tip" data-page-node-id="YPQwe0lH8QquIIN4f9eots">勾选需过滤的部门后，该部门的<b data-page-node-id="UdpdfDrKFJrmAz6hSTeiIx">全部记录</b>将从<b data-page-node-id="aq8F402TAxZynPfP3gREgg">部门排名</b>与<b data-page-node-id="YHlSIsCmFpUvt04GaaGWSU">签字评估师排名</b>中整体剔除（报告数、平均分、上季得分与排名变化一并重算）。<br data-page-node-id="YJg6UcffvXxi6tSPfRtOKx">
-        带「默认」标记的部门来自源码中的 <code data-page-node-id="C79kzTpYiP3iMJiFRILE9m">DEFAULT_EXCLUDED_DEPTS</code> 默认过滤名单，始终生效；自定义勾选会记忆在本机浏览器。</p>
+        带「默认」标记的部门始终排除；自定义部门勾选沿用本机浏览器记忆。部门排除与上方的风险、人员组合规则独立生效。</p>
       <div class="filter-tools" data-page-node-id="AxOnwmUXIKpHRJG0qmA76m">
         <input type="text" id="filter-search" placeholder="搜索部门名称…" oninput="renderFilterList()" data-page-node-id="e8WBBe1xsvvKvuFJEq3OPN">
         <button class="tool-btn" onclick="resetUserFilter()" data-page-node-id="9safef2PxAtOfTTsrfeJcf">↺ 重置为默认名单</button>
@@ -381,7 +405,7 @@ w[f]=1}i[b]=f;}}for(g=l.s.r+n;g<=l.e.r;++g){if((T[g]||{}).hidden)continue;var A=
 </script>
 <script>
 // ================= 应用逻辑 =================
-let RAW = [];            // 内部数据：[报告质量评分, 部门, 项目合伙人, 签字评估师1, 创建时间, 报告名称, 签字评估师2, 报告审核流水号]
+let RAW = [];            // Fields: score, dept, partner, appraiser1, time, name, appraiser2, serial, risk, reviewer.
 const DEPT_HEADS = {"评估十一部":"杨敏","矿权部":"童海方","上海分公司":"程恒洋","评估三部":"董雨露","西南分公司":"陈忠金","天津分公司":"陶美伊","西北分公司":"刘海龙","评估部":"何振廷","评估四部":"胡家昊","宁夏分公司":"周磊","郑州分公司二组":"王振","评估十四部":"程飞","江西分公司":"车南轩","深圳分公司":"孙绮","评估五部":"王彬","评估十部":"杨冰","武汉分公司":"徐达","四川分公司":"李学华","济南分公司":"胡家昊","评估一部":"殷守梅","海南分公司":"冯刚","浙江分公司":"方思程","吉林分公司":"崔晶红","评估七部":"吴志浩"};
 
 /* =====================================================================
@@ -400,6 +424,11 @@ const DEFAULT_EXCLUDED_DEPTS = [
   "武汉分公司",
   "矿权部"
 ];
+const DEFAULT_EXCLUDED_RISKS = ['B', 'C'];
+const DEFAULT_EXCLUDED_REVIEWERS = ['陈倩倩', '池生禄', '刘俊杰', '黄云川', '秦向红', '童海方', '陈春立', '陈忠金'];
+let excludedRisks = new Set(DEFAULT_EXCLUDED_RISKS);
+let excludedReviewers = new Set(DEFAULT_EXCLUDED_REVIEWERS);
+let addedReviewers = new Set();
 
 // 用户在页面上勾选的「自定义过滤部门」是否记忆到本机浏览器（localStorage）
 const REMEMBER_USER_FILTER = true;
@@ -427,7 +456,27 @@ function rebuildExcluded(){
   EXCLUDED = new Set([...defs, ...userExcluded]);
 }
 function isDeptExcluded(dept){ return EXCLUDED.has(normDept(dept)); }
-function rowExcluded(r){ return isDeptExcluded(r[1]); }
+function normRisk(v){ return normDept(v).toUpperCase(); }
+function isCompoundFilterActive(){ return excludedRisks.size > 0 && excludedReviewers.size > 0; }
+function rowExcluded(r){
+  return isDeptExcluded(r[1]) ||
+    (excludedRisks.has(normRisk(r[8])) && excludedReviewers.has(normDept(r[9])));
+}
+function reviewerOptions(){
+  const imported = [...new Set(RAW.map(r => normDept(r[9])).filter(isPresent))]
+    .sort((a,b) => a.localeCompare(b,'zh'));
+  const names = [...new Set([...DEFAULT_EXCLUDED_REVIEWERS, ...imported, ...excludedReviewers])]
+    .filter(name => !addedReviewers.has(name));
+  return [...names, ...addedReviewers];
+}
+function compoundFilterSummary(){
+  return isCompoundFilterActive()
+    ? '业务风险 '+[...excludedRisks].sort().join('、')+' 且三级复核人名单（'+excludedReviewers.size+' 人）'
+    : '组合过滤未启用（需同时选择风险类型和三级复核人）';
+}
+function filterSummary(){
+  return '部门排除 '+EXCLUDED.size+' 项；'+compoundFilterSummary();
+}
 function excludedReportCount(q){
   return RAW.filter(r => qkey(r[4]) === q && r[0] > 0 && rowExcluded(r)).length;
 }
@@ -460,9 +509,11 @@ function reportAppraisers(r){ return [...new Set([r[3], r[6]].filter(isPresent))
 let allQuarters = [];
 let currentQ = null;
 
-function compute(q){
-  // 部门过滤：被过滤部门的记录不参与任何统计（部门排名、签字评估师排名、报告数、季度对比）
-  const rows = RAW.filter(r => qkey(r[4]) === q && r[0] > 0 && !rowExcluded(r));
+function computePeriod(startQ, endQ){
+  const rows = RAW.filter(r => {
+    const q = qkey(r[4]);
+    return q != null && q >= startQ && q <= endQ && r[0] > 0 && !rowExcluded(r);
+  });
   const deptMap = new Map(), appMap = new Map();
   rows.forEach(r => {
     const [score, dept] = r;
@@ -478,6 +529,35 @@ function compute(q){
   const toArr = m => [...m.entries()].map(([name,o])=>({name, avg:o.sum/o.n, n:o.n, reports:o.reports}))
       .sort((x,y)=> y.avg-x.avg || y.n-x.n || x.name.localeCompare(y.name,'zh'));
   return { dept: toArr(deptMap), app: toArr(appMap), total: rows.length };
+}
+function compute(q){ return q == null ? {dept:[], app:[], total:0} : computePeriod(q, q); }
+function historyData(q){
+  if(q == null) return [];
+  const year = Math.floor(q/4), periods = [];
+  for(let i=q%4-1; i>=0; i--){
+    periods.push({label:CN_Q[i]+'季度平均分', start:year*4+i, end:year*4+i});
+  }
+  for(let y=year-1; y>=year-3; y--){
+    periods.push({label:y+'年度平均分', start:y*4, end:y*4+3});
+  }
+  return periods.map(p => {
+    const scores = computePeriod(p.start, p.end);
+    return {label:p.label,
+      dept:new Map(scores.dept.map(o => [o.name, o.avg])),
+      app:new Map(scores.app.map(o => [o.name, o.avg]))};
+  });
+}
+function historyValues(periods, kind, name){ return periods.map(p => p[kind].get(name) ?? null); }
+function historyCells(periods, kind, name){
+  return historyValues(periods, kind, name).map(v => '<td class="num">'+(v == null ? '-' : fmt(v))+'</td>').join('');
+}
+function renderHistoryHeaders(periods){
+  ['dept', 'app'].forEach(kind => {
+    const row = document.getElementById(kind+'-head-row');
+    row.querySelectorAll('.history-col').forEach(el => el.remove());
+    row.querySelector('.trend-col').insertAdjacentHTML('beforebegin',
+      periods.map(p => '<th class="num history-col">'+esc(p.label)+'</th>').join(''));
+  });
 }
 function prevIndex(q, kind){
   const map = new Map(); if(q == null) return map;
@@ -669,7 +749,7 @@ function openTrend(kind, name){
   document.getElementById('trend-hint').innerHTML =
     '统计范围：共 ' + series.length + ' 个季度（' + qlabel(series[0].q) + ' ~ ' + qlabel(series[series.length-1].q) + '），' +
     '其中上榜 ' + rankedQ + ' 个季度；排名变化 = 与上一个上榜季度相比，空缺点表示该季度未上榜。' +
-    (EXCLUDED.size ? '<br>当前已启用部门过滤（' + EXCLUDED.size + ' 个部门），其记录已从各季度排名中剔除。' : '');
+    '<br>当前过滤条件：'+esc(filterSummary())+'；命中的报告已从各季度排名中剔除。';
 
   const tb = document.getElementById('trend-body');
   document.getElementById('trend-thead').innerHTML =
@@ -708,6 +788,7 @@ function exportSingleTrend(){
     ['名称', name],
     ['统计季度范围', series.length ? qlabel(series[0].q) + ' ~ ' + qlabel(series[series.length-1].q) : ''],
     ['排名变化口径', '与上一个上榜季度相比；「未上榜」= 该季度无有效报告'],
+    ['过滤条件', filterSummary()],
     [],
     ['季度','排名','排名变化','平均分','报告数','当季参与数']
   ];
@@ -885,6 +966,7 @@ document.addEventListener('keydown', function(e){
 
 function render(){
   invalidateTrend();          // 数据 / 过滤名单变化后，季度趋势缓存随之失效
+  closeModal(); closeTrend();
   renderFilterView();
   if(RAW.length === 0){
     document.getElementById('empty').style.display = 'flex';
@@ -901,7 +983,10 @@ function render(){
   if(currentQ == null) currentQ = allQuarters[allQuarters.length-1];
   const st = rankState(currentQ);
   const cur = st.cur, prevQ = st.prevQ, pDept = st.pDept, pApp = st.pApp;
-  const nFiltered = EXCLUDED.size, nFilteredReports = excludedReportCount(currentQ);
+  const nFiltered = EXCLUDED.size + (isCompoundFilterActive() ? 1 : 0);
+  const nFilteredReports = excludedReportCount(currentQ);
+  const history = historyData(currentQ);
+  renderHistoryHeaders(history);
 
   document.getElementById('summary').innerHTML =
     '<div class="card"><div class="num">'+qlabel(currentQ)+'</div><div class="cap">当前季度</div></div>' +
@@ -909,16 +994,16 @@ function render(){
     '<div class="card"><div class="num">'+cur.dept.length+'</div><div class="cap">参与部门</div></div>' +
     '<div class="card"><div class="num">'+cur.app.length+'</div><div class="cap">参与签字评估师</div></div>' +
     (prevQ!=null ? '<div class="card"><div class="num">'+qlabel(prevQ)+'</div><div class="cap">对比季度</div></div>' : '') +
-    (nFiltered ? '<div class="card"><div class="num">-'+nFilteredReports+'</div><div class="cap">已过滤报告数（'+nFiltered+' 个部门）</div></div>' : '');
+    (nFiltered ? '<div class="card"><div class="num">'+nFilteredReports+'</div><div class="cap">已排除报告数（命中多项只计一次）</div></div>' : '');
 
   renderQuarterBar();
 
-  const filterHint = nFiltered ? '，已过滤 '+nFiltered+' 个部门' : '';
+  const filterHint = nFiltered ? '，已应用过滤条件' : '';
   document.getElementById('dept-hint').textContent = '共 '+cur.dept.length+' 个部门' + filterHint + (prevQ!=null ? '，对比 '+qlabel(prevQ) : '，暂无上季度数据');
   document.getElementById('app-hint').textContent = '共 '+cur.app.length+' 位签字评估师' + filterHint + (prevQ!=null ? '，对比 '+qlabel(prevQ) : '，暂无上季度数据');
 
   const emptyTip = n => '<tr><td colspan="'+n+'" class="sub" style="text-align:center;padding:26px">' +
-    (nFiltered ? '当前季度下所有部门均已被过滤，请在「🚫 部门过滤」中调整过滤名单。' : '当前季度暂无有效数据。') + '</td></tr>';
+    (nFiltered ? '当前季度没有符合条件的有效报告，请在「过滤条件」中查看排除设置。' : '当前季度暂无有效数据。') + '</td></tr>';
 
   document.getElementById('dept-body').innerHTML = cur.dept.length ? cur.dept.map((o,i)=>{
     const p = pDept.get(o.name);
@@ -926,9 +1011,10 @@ function render(){
       '<td>'+rankBadge(i+1)+'</td><td class="name">'+esc(o.name)+'</td><td class="sub">'+esc(deptHead(o.name))+'</td>' +
       '<td class="num sub">'+o.n+'</td><td class="num avg">'+fmt(o.avg)+'</td>' +
       '<td class="num">'+prevAvgCell(p)+'</td><td class="num">'+deltaCell(o.avg,p,prevQ!=null)+'</td>' +
-      '<td class="num">'+prevRankCell(p)+'</td><td>'+rankCell(i+1,p,prevQ!=null)+'</td>' +
-      '<td class="trend-cell">'+trendButton('dept', o.name)+'</td></tr>';
-  }).join('') : emptyTip(10);
+       '<td class="num">'+prevRankCell(p)+'</td><td>'+rankCell(i+1,p,prevQ!=null)+'</td>' +
+       historyCells(history, 'dept', o.name) +
+       '<td class="trend-cell">'+trendButton('dept', o.name)+'</td></tr>';
+  }).join('') : emptyTip(10+history.length);
 
   document.getElementById('app-body').innerHTML = cur.app.length ? cur.app.map((o,i)=>{
     const p = pApp.get(o.name);
@@ -936,28 +1022,30 @@ function render(){
       '<td>'+rankBadge(i+1)+'</td><td class="name">'+esc(o.name)+'</td>' +
       '<td class="num sub">'+o.n+'</td><td class="num avg">'+fmt(o.avg)+'</td>' +
       '<td class="num">'+prevAvgCell(p)+'</td><td class="num">'+deltaCell(o.avg,p,prevQ!=null)+'</td>' +
-      '<td class="num">'+prevRankCell(p)+'</td><td>'+rankCell(i+1,p,prevQ!=null)+'</td>' +
-      '<td class="trend-cell">'+trendButton('app', o.name)+'</td></tr>';
-  }).join('') : emptyTip(9);
+       '<td class="num">'+prevRankCell(p)+'</td><td>'+rankCell(i+1,p,prevQ!=null)+'</td>' +
+       historyCells(history, 'app', o.name) +
+       '<td class="trend-cell">'+trendButton('app', o.name)+'</td></tr>';
+  }).join('') : emptyTip(9+history.length);
 }
 
 // ================= 部门过滤：界面 =================
 function renderFilterView(){
   const defs = defaultExcludedList();
   const users = [...userExcluded].sort((a,b)=>a.localeCompare(b,'zh'));
-  const total = EXCLUDED.size;
+  const total = EXCLUDED.size + (isCompoundFilterActive() ? 1 : 0);
 
   const badge = document.getElementById('filter-count');
   badge.textContent = total ? total : '';
+  badge.title = filterSummary();
   badge.classList.toggle('show', total > 0);
 
   const bar = document.getElementById('filter-bar');
   if(!total){ bar.classList.remove('show'); bar.innerHTML = ''; return; }
   bar.classList.add('show');
-  bar.innerHTML = '<span class="tool-hint">已过滤部门（'+total+'）：</span>' +
+  bar.innerHTML = '<span class="tool-hint">已排除部门（'+EXCLUDED.size+'）：</span>' +
     defs.map(d => '<span class="chip def">'+esc(d)+'<span class="tag">默认</span></span>').join('') +
     users.map(d => '<span class="chip">'+esc(d)+'<button class="x" data-dept="'+esc(d)+'" title="取消过滤">✕</button></span>').join('') +
-    '<span class="tool-hint">· 以上部门的全部记录已从部门排名与签字评估师排名中剔除</span>';
+    '<span class="chip">'+esc(compoundFilterSummary())+'</span>';
 }
 function renderFilterList(){
   const kw = normDept(document.getElementById('filter-search').value).toLowerCase();
@@ -982,15 +1070,72 @@ function renderFilterList(){
         '</span></label>';
     }).join('');
   }
-  const shown = names.filter(n => defs.includes(n) || userExcluded.has(n)).length;
   document.getElementById('filter-foot-hint').textContent =
-    '生效中：'+EXCLUDED.size+' 个部门'+(shown ? '（列表内已勾选 '+shown+' 个）' : '');
+    filterSummary();
 }
 function openFilter(){
   renderFilterList();
+  renderCompoundFilterList();
   document.getElementById('filter-mask').classList.add('show');
 }
 function closeFilter(){ document.getElementById('filter-mask').classList.remove('show'); }
+function renderCompoundFilterList(){
+  document.getElementById('risk-filter-list').innerHTML = ['A','B','C'].map(risk =>
+    '<label class="filter-item"><input type="checkbox" data-risk="'+risk+'"'+
+    (excludedRisks.has(risk)?' checked':'')+'><span>'+risk+'</span></label>').join('');
+  const kw = normDept(document.getElementById('reviewer-search').value).toLowerCase();
+  const names = reviewerOptions().filter(name => !kw || name.toLowerCase().includes(kw));
+  const counts = new Map();
+  RAW.forEach(r => {
+    if(r[0] > 0 && qkey(r[4]) === currentQ){
+      const name = normDept(r[9]);
+      counts.set(name, (counts.get(name)||0)+1);
+    }
+  });
+  document.getElementById('reviewer-filter-list').innerHTML = names.length ? names.map(name => {
+    const isDefault = DEFAULT_EXCLUDED_REVIEWERS.includes(name);
+    return '<label class="filter-item"><input type="checkbox" data-reviewer="'+esc(name)+'"'+
+      (excludedReviewers.has(name)?' checked':'')+'><span>'+esc(name)+'</span><span class="meta">'+
+      (isDefault?'<span class="tag">默认</span>':addedReviewers.has(name)?'<span class="tag">临时</span>':'')+
+      '<span class="cnt">'+(counts.get(name)||0)+' 份</span></span></label>';
+  }).join('') : '<div class="filter-empty">没有匹配的人员，可输入姓名临时追加。</div>';
+  const missing = RAW.filter(r => r[0] > 0 && (!isPresent(r[8]) || !isPresent(r[9]))).length;
+  document.getElementById('filter-data-warning').textContent = missing
+    ? '已导入有效报告中有 '+missing+' 条缺少业务风险或三级复核人，无法命中组合排除；部门排除仍生效。' : '';
+  document.getElementById('filter-foot-hint').textContent = filterSummary();
+}
+function refreshCompoundFilter(){
+  render(); renderCompoundFilterList();
+  if(document.getElementById('filter-mask').classList.contains('show')) renderFilterList();
+}
+function addReviewer(){
+  const input = document.getElementById('reviewer-add');
+  const name = normDept(input.value);
+  if(!isPresent(name) || name === '-') { alert('请输入有效的人员姓名'); return; }
+  if(!DEFAULT_EXCLUDED_REVIEWERS.includes(name)) addedReviewers.add(name);
+  excludedReviewers.add(name);
+  input.value = ''; document.getElementById('reviewer-search').value = '';
+  refreshCompoundFilter();
+}
+function resetCompoundFilter(){
+  excludedRisks = new Set(DEFAULT_EXCLUDED_RISKS);
+  excludedReviewers = new Set(DEFAULT_EXCLUDED_REVIEWERS);
+  addedReviewers.clear();
+  document.getElementById('reviewer-search').value = '';
+  document.getElementById('reviewer-add').value = '';
+  refreshCompoundFilter();
+}
+['risk-filter-list', 'reviewer-filter-list'].forEach(id => {
+  document.getElementById(id).addEventListener('change', function(e){
+    const cb = e.target;
+    if(cb.type !== 'checkbox') return;
+    const value = cb.dataset.risk || cb.dataset.reviewer;
+    if(!value) return;
+    const selected = cb.dataset.risk ? excludedRisks : excludedReviewers;
+    if(cb.checked) selected.add(value); else selected.delete(value);
+    refreshCompoundFilter();
+  });
+});
 function toggleDeptFilter(dept, on){
   dept = normDept(dept);
   if(!dept || defaultExcludedList().includes(dept)) return;   // 默认名单由源码定义，界面上不可取消
@@ -1087,6 +1232,8 @@ function mapColumns(headers){
   idx.time = find(['创建时间']);
   idx.name = find(['报告名称']);
   idx.serial = find(['报告审核流水号']);
+  idx.risk = find(['业务风险', '风险类型']);
+  idx.reviewer = find(['三级复核人', '三审人员']);
   return idx;
 }
 function fmtDate(v){
@@ -1124,9 +1271,11 @@ function extractRows(aoa, hr, srcLabel){
     const time = fmtDate(cell(row, idx.time));
     const name = String(cell(row, idx.name)).trim();
     const serial = String(cell(row, idx.serial)).trim();
+    const risk = normRisk(cell(row, idx.risk));
+    const reviewer = normDept(cell(row, idx.reviewer));
     if(qkey(time)==null) continue;
     if(!isPresent(dept) && !isPresent(app1) && !isPresent(app2)) continue;
-    parsed.push([score, isPresent(dept)?dept:'', isPresent(partner)?partner:'', isPresent(app1)?app1:'', time, isPresent(name)?name:'', isPresent(app2)?app2:'', isPresent(serial)?serial:'']);
+    parsed.push([score, isPresent(dept)?dept:'', isPresent(partner)?partner:'', isPresent(app1)?app1:'', time, isPresent(name)?name:'', isPresent(app2)?app2:'', isPresent(serial)?serial:'', isPresent(risk)?risk:'', isPresent(reviewer)?reviewer:'']);
   }
   return parsed;
 }
@@ -1173,6 +1322,12 @@ function dedupRaw(){
     const nonZero = rows.filter(r => r[0] > 0);
     const candidates = nonZero.length ? nonZero : rows;   // 有非 0 分 → 去掉 0 分项；全为 0 → 仍保留一条
     const latest = candidates.reduce((a,b) => timeVal(a[4]) >= timeVal(b[4]) ? a : b);
+    // Enrich only the same scored version, preserving existing values on conflicts.
+    candidates.forEach(r => {
+      if(r[0] !== latest[0] || timeVal(r[4]) !== timeVal(latest[4])) return;
+      if(![8,9].every(i => !isPresent(latest[i]) || !isPresent(r[i]) || latest[i] === r[i])) return;
+      [8,9].forEach(i => { if(!isPresent(latest[i]) && isPresent(r[i])) latest[i] = r[i]; });
+    });
     rows.forEach(r => { if(r !== latest) remove.add(r); });
   });
   if(remove.size) RAW = RAW.filter(r => !remove.has(r));
@@ -1187,7 +1342,12 @@ function applyImport(parsed, srcLabel){
   refreshQuarters();
   if(allQuarters.length) currentQ = allQuarters[allQuarters.length-1];
   render();
-  alert('成功导入 '+parsed.length+' 行（来源：'+srcLabel+'）。\n按「报告审核流水号」去重移除 '+removed+' 行，当前共 '+RAW.length+' 行、'+allQuarters.length+' 个季度。');
+  if(document.getElementById('filter-mask').classList.contains('show')){
+    renderFilterList(); renderCompoundFilterList();
+  }
+  const missing = RAW.filter(r => r[0] > 0 && (!isPresent(r[8]) || !isPresent(r[9]))).length;
+  alert('成功导入 '+parsed.length+' 行（来源：'+srcLabel+'）。\n按「报告审核流水号」去重移除 '+removed+' 行，当前共 '+RAW.length+' 行、'+allQuarters.length+' 个季度。'+
+    (missing ? '\n当前数据中有 '+missing+' 条有效报告缺少业务风险或三级复核人，无法命中组合排除；部门排除仍生效。' : ''));
 }
 function importExcel(buf){
   const wb = XLSX.read(buf, {type:'array', cellDates:true});
@@ -1237,20 +1397,23 @@ function exportExcel(){
   if(currentQ == null) currentQ = allQuarters[allQuarters.length-1];
   const st = rankState(currentQ);
   const wb = XLSX.utils.book_new();
+  const history = historyData(currentQ);
+  const historyHeaders = history.map(p => p.label);
+  const exportedHistory = (kind, name) => historyValues(history, kind, name).map(v => v == null ? '-' : round2(v));
 
-  const deptRows = [['序号','部门','部门负责人','报告数','本季平均分','上季得分','得分变化','上季排名','排名变化']];
+  const deptRows = [['序号','部门','部门负责人','报告数','本季平均分','上季得分','得分变化','上季排名','排名变化', ...historyHeaders]];
   st.cur.dept.forEach((o,i)=>{
     const p = st.pDept.get(o.name);
     deptRows.push([i+1, o.name, deptHead(o.name), o.n, round2(o.avg),
-      p!=null?round2(p.avg):'', p!=null?round2(o.avg-p.avg):'', p!=null?p.rank:'', p!=null?(p.rank-(i+1)):(st.prevQ!=null?'新上榜':'')]);
+      p!=null?round2(p.avg):'', p!=null?round2(o.avg-p.avg):'', p!=null?p.rank:'', p!=null?(p.rank-(i+1)):(st.prevQ!=null?'新上榜':''), ...exportedHistory('dept', o.name)]);
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(deptRows), '部门排名');
 
-  const appRows = [['序号','签字评估师','报告数','本季平均分','上季得分','得分变化','上季排名','排名变化']];
+  const appRows = [['序号','签字评估师','报告数','本季平均分','上季得分','得分变化','上季排名','排名变化', ...historyHeaders]];
   st.cur.app.forEach((o,i)=>{
     const p = st.pApp.get(o.name);
     appRows.push([i+1, o.name, o.n, round2(o.avg),
-      p!=null?round2(p.avg):'', p!=null?round2(o.avg-p.avg):'', p!=null?p.rank:'', p!=null?(p.rank-(i+1)):(st.prevQ!=null?'新上榜':'')]);
+      p!=null?round2(p.avg):'', p!=null?round2(o.avg-p.avg):'', p!=null?p.rank:'', p!=null?(p.rank-(i+1)):(st.prevQ!=null?'新上榜':''), ...exportedHistory('app', o.name)]);
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(appRows), '签字评估师排名');
 
@@ -1308,17 +1471,21 @@ function exportExcel(){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detail), '趋势明细');
   }
 
-  const rawRows = [['报告质量评分','部门','项目合伙人','签字评估师1','签字评估师2','创建时间','报告名称','报告审核流水号']];
-  RAW.forEach(r => rawRows.push([r[0], r[1], r[2], r[3], r[6], r[4], r[5], r[7]]));
+  const rawRows = [['报告质量评分','部门','项目合伙人','签字评估师1','签字评估师2','创建时间','报告名称','报告审核流水号','业务风险','三级复核人']];
+  RAW.forEach(r => rawRows.push([r[0], r[1], r[2], r[3], r[6], r[4], r[5], r[7], r[8]||'', r[9]||'']));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rawRows), '原始数据');
 
-  // 过滤生效时附一张设置表，说明排名表已剔除的部门
-  if(EXCLUDED.size){
-    const fRows = [['过滤的部门','来源'], ['说明：以下部门的全部记录已从「部门排名」「签字评估师排名」中剔除（原始数据仍保留全部行）', '']];
-    defaultExcludedList().forEach(d => fRows.push([d, '默认过滤名单（源码 DEFAULT_EXCLUDED_DEPTS）']));
-    [...userExcluded].sort((a,b)=>a.localeCompare(b,'zh')).forEach(d => fRows.push([d, '自定义过滤（页面勾选）']));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(fRows), '过滤设置');
-  }
+  const fRows = [['条件类型','排除项','说明'],
+    ['组合规则', compoundFilterSummary(), '业务风险命中且三级复核人命中才排除；部门排除独立生效'],
+    ['统计口径', '仅统计评分大于 0 的报告', '去重后应用过滤；原始数据保留全部行'],
+    ['历史平均分', '季度分别统计；年度按报告数计算平均', '前三个自然年度；仅统计已导入记录，无数据为 -'],
+    ['临时选择', '风险及人员调整仅在本次页面有效', '重新打开恢复 B、C 和默认 8 人']];
+  defaultExcludedList().forEach(d => fRows.push(['部门', d, '默认排除']));
+  [...userExcluded].sort((a,b)=>a.localeCompare(b,'zh')).forEach(d => fRows.push(['部门', d, '自定义部门排除']));
+  ['A','B','C'].filter(r => excludedRisks.has(r)).forEach(r => fRows.push(['业务风险', r, '组合条件之一']));
+  reviewerOptions().filter(n => excludedReviewers.has(n)).forEach(n =>
+    fRows.push(['三级复核人', n, DEFAULT_EXCLUDED_REVIEWERS.includes(n)?'默认人员':addedReviewers.has(n)?'临时新增人员':'本次勾选人员']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(fRows), '过滤设置');
 
   XLSX.writeFile(wb, '报告质量评分排行榜_'+qlabel(currentQ)+'.xlsx');
 }
